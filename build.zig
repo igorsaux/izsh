@@ -10,29 +10,29 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
-    const zgsh_mod = b.addModule("zgsh", .{
-        .root_source_file = b.path("src/zgsh.zig"),
+    const izsh_mod = b.addModule("izsh", .{
+        .root_source_file = b.path("src/izsh.zig"),
         .target = target,
     });
 
-    const zgsh_tests = b.addTest(.{
-        .root_module = zgsh_mod,
+    const izsh_tests = b.addTest(.{
+        .root_module = izsh_mod,
     });
-    b.installArtifact(zgsh_tests);
+    b.installArtifact(izsh_tests);
 
-    const run_zgsh_tests = b.addRunArtifact(zgsh_tests);
+    const run_izsh_tests = b.addRunArtifact(izsh_tests);
 
     const tests_step = b.step("test", "Run the tests");
-    tests_step.dependOn(&run_zgsh_tests.step);
+    tests_step.dependOn(&run_izsh_tests.step);
 
     const exe = b.addExecutable(.{
-        .name = "zgsh",
+        .name = "izsh",
         .root_module = b.createModule(.{
             .root_source_file = b.path("src/main.zig"),
             .target = target,
             .optimize = optimize,
             .imports = &.{
-                .{ .name = "zgsh", .module = zgsh_mod },
+                .{ .name = "izsh", .module = izsh_mod },
             },
         }),
     });

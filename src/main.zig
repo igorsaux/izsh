@@ -5,7 +5,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 const std = @import("std");
-const zgsh = @import("zgsh");
+const izsh = @import("izsh");
 
 pub fn main() !void {
     const gpa = std.heap.DebugAllocator(.{});
@@ -24,7 +24,7 @@ pub fn main() !void {
     var stderr_buf: [1024]u8 = undefined;
     var stderr_writer: std.fs.File.Writer = stderr.writer(&stderr_buf);
 
-    var shell = zgsh.Shell.init(
+    var shell = izsh.Shell.init(
         alloc.allocator(),
         &stdin_reader.interface,
         &stdout_writer.interface,
@@ -32,8 +32,8 @@ pub fn main() !void {
     );
     defer shell.deinit(alloc.allocator());
 
-    var builtins_executor: zgsh.executors.BuiltinsExecutor = .init(alloc.allocator(), &shell, null);
-    var repl: zgsh.Repl = .{ .executor = builtins_executor.executor(), .shell = &shell };
+    var builtins_executor: izsh.executors.BuiltinsExecutor = .init(alloc.allocator(), &shell, null);
+    var repl: izsh.Repl = .{ .executor = builtins_executor.executor(), .shell = &shell };
 
     while (try repl.readLine(alloc.allocator())) {}
 }
