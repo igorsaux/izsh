@@ -2,7 +2,9 @@ const std = @import("std");
 const zgsh = @import("zgsh");
 
 pub fn main() !void {
-    const alloc = std.heap.page_allocator;
+    const gpa = std.heap.DebugAllocator(.{});
+    var alloc = gpa.init;
+    defer _ = alloc.deinit();
 
     const stdin = std.fs.File.stdin();
     var stdin_buf: [1024]u8 = undefined;
@@ -17,14 +19,14 @@ pub fn main() !void {
     var stderr_writer: std.fs.File.Writer = stderr.writer(&stderr_buf);
 
     var shell = zgsh.Shell.init(
-        alloc,
+        alloc.allocator(),
         &stdin_reader.interface,
         &stdout_writer.interface,
         &stderr_writer.interface,
     );
-    defer shell.deinit(alloc);
+    defer shell.deinit(alloc.allocator());
 
-    while (true) {
-        try shell.execute();
-    }
+    var repl: zgsh.Repl = .{ .shell = &shell };
+
+    while (try repl.nextline()) {}
 }
