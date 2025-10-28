@@ -12,6 +12,7 @@ pub fn build(b: *std.Build) void {
     const zgsh_tests = b.addTest(.{
         .root_module = zgsh_mod,
     });
+    b.installArtifact(zgsh_tests);
 
     const run_zgsh_tests = b.addRunArtifact(zgsh_tests);
 

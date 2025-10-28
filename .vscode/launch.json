@@ -8,6 +8,14 @@
             "program": "${workspaceRoot}/zig-out/bin/zgsh",
             "args": [],
             "cwd": "${workspaceRoot}"
+        },
+                {
+            "name": "Debug tests",
+            "type": "lldb",
+            "request": "launch",
+            "program": "${workspaceRoot}/zig-out/bin/test",
+            "args": [],
+            "cwd": "${workspaceRoot}"
         }
     ]
 }
