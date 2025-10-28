@@ -16,6 +16,7 @@ pub const Streams = struct {
     stdin_buf: []u8,
     stdout_buf: []u8,
     stderr_buf: []u8,
+
     stdin: std.Io.Reader,
     stdout: std.Io.Writer,
     stderr: std.Io.Writer,
@@ -37,6 +38,18 @@ pub const Streams = struct {
         streams.stderr = .fixed(streams.stderr_buf);
 
         return streams;
+    }
+
+    pub fn stdinWriter(this: *@This()) std.Io.Writer {
+        return .fixed(this.stdin_buf);
+    }
+
+    pub fn writeLine(this: *@This(), input: []const u8) !void {
+        var writer = this.stdinWriter();
+
+        try writer.writeAll(input);
+        try writer.writeByte('\n');
+        try writer.flush();
     }
 
     pub fn deinit(this: *@This(), allocator: std.mem.Allocator) void {

@@ -32,8 +32,8 @@ pub fn main() !void {
     );
     defer shell.deinit(alloc.allocator());
 
-    var repl: zgsh.Repl = try .init(alloc.allocator(), &shell);
-    defer repl.deinit(alloc.allocator());
+    var builtins_executor: zgsh.executors.BuiltinsExecutor = .init(alloc.allocator(), &shell, null);
+    var repl: zgsh.Repl = .{ .executor = builtins_executor.executor(), .shell = &shell };
 
-    while (try repl.readline()) {}
+    while (try repl.readLine(alloc.allocator())) {}
 }

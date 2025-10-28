@@ -8,8 +8,15 @@ pub const Shell = @import("shell.zig");
 pub const Repl = @import("repl.zig");
 pub const Lexer = @import("lexer.zig");
 
+pub const executors = @import("executors.zig");
+pub const types = @import("types.zig");
+pub const builtins = @import("builtins.zig");
+
 test {
     _ = Shell;
     _ = Repl;
     _ = Lexer;
+
+    _ = executors;
+    _ = builtins;
 }

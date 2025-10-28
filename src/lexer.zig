@@ -8,10 +8,6 @@ const std = @import("std");
 
 pub const TokenTag = enum(u8) {
     string,
-    /// '
-    squote,
-    /// "
-    dquote,
 };
 
 pub const Quote = enum(u8) {
@@ -25,8 +21,6 @@ pub const TokenValue = union(TokenTag) {
         data: []const u8,
         quotes: Quote,
     },
-    squote: struct {},
-    dquote: struct {},
 };
 
 pub const Token = struct {
@@ -34,7 +28,7 @@ pub const Token = struct {
     value: TokenValue,
 };
 
-const Error = error{ InvalidToken, OutOfMemory };
+pub const Error = error{ InvalidToken, OutOfMemory };
 
 pub const ErrorInfo = struct {
     pos: usize = 0,
@@ -75,23 +69,6 @@ fn onQuote(this: *Lexer, allocator: std.mem.Allocator, quote: Quote, input: []co
 
     try this.tryAppendString(allocator, input, pos);
     this.quoting = new_quote;
-
-    var value: TokenValue = undefined;
-
-    switch (quote) {
-        .no => return,
-        .dquote => {
-            value = .{ .dquote = .{} };
-        },
-        .squote => {
-            value = .{ .squote = .{} };
-        },
-    }
-
-    try this.tokens.append(allocator, .{
-        .pos = pos,
-        .value = value,
-    });
 }
 
 fn tryAppendString(this: *Lexer, allocator: std.mem.Allocator, input: []const u8, pos: usize) error{OutOfMemory}!void {
@@ -192,7 +169,6 @@ const testing = struct {
                 try std.testing.expectEqualStrings(expected.value.string.data, actual.value.string.data);
                 try std.testing.expectEqual(expected.value.string.quotes, actual.value.string.quotes);
             },
-            else => {},
         }
     }
 
@@ -212,22 +188,6 @@ test "Invalid token" {
 
     try std.testing.expectError(Error.InvalidToken, Lexer.parse(alloc, "\" \x00", &err));
     try std.testing.expectEqual(2, err.pos);
-}
-
-test "Quotes" {
-    const alloc = std.testing.allocator;
-
-    var lexer: Lexer = try .parse(alloc, "\"\" '' \"\"", null);
-    defer lexer.deinit(alloc);
-
-    try std.testing.expectEqualSlices(Token, &.{
-        .{ .pos = 0, .value = .{ .dquote = .{} } },
-        .{ .pos = 1, .value = .{ .dquote = .{} } },
-        .{ .pos = 3, .value = .{ .squote = .{} } },
-        .{ .pos = 4, .value = .{ .squote = .{} } },
-        .{ .pos = 6, .value = .{ .dquote = .{} } },
-        .{ .pos = 7, .value = .{ .dquote = .{} } },
-    }, lexer.tokens.items);
 }
 
 test "Strings" {
@@ -252,12 +212,8 @@ test "Quoted strings" {
     defer lexer.deinit(alloc);
 
     const expected = [_]Token{
-        .{ .pos = 0, .value = .squote },
         .{ .pos = 1, .value = .{ .string = .{ .data = "foobar", .quotes = .squote } } },
-        .{ .pos = 7, .value = .squote },
-        .{ .pos = 9, .value = .dquote },
         .{ .pos = 10, .value = .{ .string = .{ .data = "foobar", .quotes = .dquote } } },
-        .{ .pos = 16, .value = .dquote },
         .{ .pos = 18, .value = .{ .string = .{ .data = "foo", .quotes = .no } } },
         .{ .pos = 22, .value = .{ .string = .{ .data = "bar", .quotes = .no } } },
     };
@@ -272,12 +228,8 @@ test "Quoted quotes" {
     defer lexer.deinit(alloc);
 
     const expected = [_]Token{
-        .{ .pos = 0, .value = .dquote },
         .{ .pos = 1, .value = .{ .string = .{ .data = "'foo'", .quotes = .dquote } } },
-        .{ .pos = 6, .value = .dquote },
-        .{ .pos = 8, .value = .squote },
         .{ .pos = 9, .value = .{ .string = .{ .data = "\"bar\"", .quotes = .squote } } },
-        .{ .pos = 14, .value = .squote },
     };
 
     try testing.expectEqualTokenSlices(&expected, lexer.tokens.items);
