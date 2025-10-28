@@ -26,7 +26,8 @@ pub fn main() !void {
     );
     defer shell.deinit(alloc.allocator());
 
-    var repl: zgsh.Repl = .{ .shell = &shell };
+    var repl: zgsh.Repl = try .init(alloc.allocator(), &shell);
+    defer repl.deinit(alloc.allocator());
 
-    while (try repl.nextline()) {}
+    while (try repl.readline()) {}
 }

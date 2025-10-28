@@ -18,8 +18,13 @@ pub const Streams = struct {
         var streams: @This() = undefined;
 
         streams.stdin_buf = try allocator.alloc(u8, options.stdin_size);
+        errdefer allocator.free(streams.stdin_buf);
+
         streams.stdout_buf = try allocator.alloc(u8, options.stdout_size);
+        errdefer allocator.free(streams.stdout_buf);
+
         streams.stderr_buf = try allocator.alloc(u8, options.stderr_size);
+        errdefer allocator.free(streams.stderr_buf);
 
         streams.stdin = .fixed(streams.stdin_buf);
         streams.stdout = .fixed(streams.stdout_buf);

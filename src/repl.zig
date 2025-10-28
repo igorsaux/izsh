@@ -2,8 +2,18 @@ const std = @import("std");
 const Shell = @import("shell.zig");
 
 shell: *Shell,
+input: std.ArrayList(u8),
 
-pub fn nextline(this: *@This()) !bool {
+const Repl = @This();
+
+pub fn init(allocator: std.mem.Allocator, shell: *Shell) !Repl {
+    return .{
+        .shell = shell,
+        .input = try .initCapacity(allocator, 1024),
+    };
+}
+
+pub fn readline(this: *Repl) !bool {
     var shell = this.shell;
 
     try shell.stderr.writeAll("$ ");
@@ -28,7 +38,9 @@ pub fn nextline(this: *@This()) !bool {
     return true;
 }
 
-const Repl = @This();
+pub fn deinit(this: *Repl, allocator: std.mem.Allocator) void {
+    this.input.deinit(allocator);
+}
 
 test "EOF" {
     const testing = @import("testing.zig");
@@ -40,8 +52,10 @@ test "EOF" {
     var shell: Shell = .init(alloc, &streams.stdin, &streams.stdout, &streams.stderr);
     defer shell.deinit(alloc);
 
-    var repl: Repl = .{ .shell = &shell };
-    try std.testing.expect(try repl.nextline() == false);
+    var repl: Repl = try .init(alloc, &shell);
+    defer repl.deinit(alloc);
+
+    try std.testing.expectEqual(false, try repl.readline());
 }
 
 test "Prompt" {
@@ -54,8 +68,9 @@ test "Prompt" {
     var shell: Shell = .init(alloc, &streams.stdin, &streams.stdout, &streams.stderr);
     defer shell.deinit(alloc);
 
-    var repl: Repl = .{ .shell = &shell };
-    try std.testing.expect(try repl.nextline() == false);
+    var repl: Repl = try .init(alloc, &shell);
+    defer repl.deinit(alloc);
 
-    try std.testing.expectEqualStrings(streams.stderr_buf[0..3], "$ \n");
+    try std.testing.expectEqual(false, try repl.readline());
+    try std.testing.expectEqualStrings("$ \n", streams.stderr_buf[0..3]);
 }
