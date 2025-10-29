@@ -25,6 +25,10 @@ pub fn init(this: *NCurses) Error!void {
     if (c.raw() != c.OK) {
         return Error.Unknown;
     }
+
+    if (c.noecho() != c.OK) {
+        return Error.Unknown;
+    }
 }
 
 pub fn getch(ctx: *anyopaque) ?u8 {

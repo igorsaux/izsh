@@ -34,9 +34,15 @@ pub fn readLine(this: *Repl, allocator: std.mem.Allocator) !bool {
 
             // TODO: parse sequences
             if (chr != '\n') {
+                if (std.ascii.isPrint(chr)) {
+                    try this.backend.addnstr(&.{chr});
+                }
+
                 try input.append(allocator, chr);
             }
         }
+
+        try this.backend.addnstr("\n");
 
         if (input.items.len == 1) {
             continue :next_line;
