@@ -4,16 +4,16 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-pub const Shell = @import("shell.zig");
 pub const Repl = @import("repl.zig");
 pub const Lexer = @import("lexer.zig");
 
+pub const io = @import("io.zig");
 pub const executors = @import("executors.zig");
 pub const types = @import("types.zig");
 pub const builtins = @import("builtins.zig");
 
 test {
-    _ = Shell;
+    _ = io;
     _ = Repl;
     _ = Lexer;
 

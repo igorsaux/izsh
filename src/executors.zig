@@ -5,7 +5,7 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 const std = @import("std");
-const Shell = @import("shell.zig");
+const io = @import("io.zig");
 const types = @import("types.zig");
 const builtins = @import("builtins.zig");
 
@@ -46,13 +46,13 @@ pub const EmptyExecutor = struct {
 
 pub const BuiltinsExecutor = struct {
     allocator: std.mem.Allocator,
-    shell: *Shell,
+    streams: io.Streams,
     chained: ?Executor = null,
 
-    pub fn init(allocator: std.mem.Allocator, shell: *Shell, chained: ?Executor) BuiltinsExecutor {
+    pub fn init(allocator: std.mem.Allocator, streams: io.Streams, chained: ?Executor) BuiltinsExecutor {
         return .{
             .allocator = allocator,
-            .shell = shell,
+            .streams = streams,
             .chained = chained,
         };
     }
@@ -65,7 +65,7 @@ pub const BuiltinsExecutor = struct {
         const this: *BuiltinsExecutor = @ptrCast(@alignCast(context));
 
         if (std.mem.eql(u8, std.mem.span(argv[0].?), "echo")) {
-            return builtins.echo(this.shell, argc, argv) catch return null;
+            return builtins.echo(this.streams, argc, argv) catch return null;
         }
 
         if (this.chained) |chained| {

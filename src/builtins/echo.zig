@@ -5,10 +5,10 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 const std = @import("std");
-const Shell = @import("../shell.zig");
+const io = @import("../io.zig");
 const types = @import("../types.zig");
 
-pub fn run(shell: *Shell, argc: usize, argv: [*:null]const ?[*:0]const u8) !types.ReturnCode {
+pub fn run(streams: io.Streams, argc: usize, argv: [*:null]const ?[*:0]const u8) !types.ReturnCode {
     var print_newline: bool = true;
 
     var from: usize = 1;
@@ -19,18 +19,18 @@ pub fn run(shell: *Shell, argc: usize, argv: [*:null]const ?[*:0]const u8) !type
     }
 
     for (from..argc) |i| {
-        shell.stdout.writeAll(std.mem.span(argv[i].?)) catch {};
+        streams.stdout.writeAll(std.mem.span(argv[i].?)) catch {};
 
         if (i < argc - 1) {
-            shell.stdout.writeByte(' ') catch {};
+            streams.stdout.writeByte(' ') catch {};
         }
     }
 
     if (print_newline) {
-        shell.stdout.writeByte('\n') catch {};
+        streams.stdout.writeByte('\n') catch {};
     }
 
-    shell.stdout.flush() catch {};
+    streams.stdout.flush() catch {};
 
     return 0;
 }

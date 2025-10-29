@@ -5,22 +5,22 @@
 // file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 const std = @import("std");
-const Shell = @import("shell.zig");
 const Lexer = @import("lexer.zig");
 const types = @import("types.zig");
+const io = @import("io.zig");
 const executors = @import("executors.zig");
 
 executor: executors.Executor,
-shell: *Shell,
+streams: io.Streams,
 
 const Repl = @This();
 
 pub fn readLine(this: *Repl, allocator: std.mem.Allocator) !bool {
-    var shell = this.shell;
+    var streams = this.streams;
 
     next_line: while (true) {
-        try shell.stderr.writeAll("$ ");
-        try shell.stderr.flush();
+        try streams.stderr.writeAll("$ ");
+        try streams.stderr.flush();
 
         var input: std.ArrayList(u8) = try .initCapacity(allocator, 1024);
         defer input.deinit(allocator);
@@ -28,10 +28,10 @@ pub fn readLine(this: *Repl, allocator: std.mem.Allocator) !bool {
         var byte: [1]u8 = .{0};
 
         while (byte[0] != '\n') {
-            shell.stdin.readSliceAll(&byte) catch |err| switch (err) {
+            streams.stdin.readSliceAll(&byte) catch |err| switch (err) {
                 std.Io.Reader.Error.EndOfStream => {
-                    shell.stderr.writeAll("\n") catch {};
-                    shell.stderr.flush() catch {};
+                    streams.stderr.writeAll("\n") catch {};
+                    streams.stderr.flush() catch {};
 
                     return false;
                 },
@@ -54,8 +54,8 @@ pub fn readLine(this: *Repl, allocator: std.mem.Allocator) !bool {
             var err_info: Lexer.ErrorInfo = .{};
             var lexer = Lexer.parse(allocator, input.items, &err_info) catch |err| switch (err) {
                 Lexer.Error.InvalidToken => {
-                    shell.stderr.print("invalid token at {d}\n", .{err_info.pos}) catch {};
-                    shell.stderr.flush() catch {};
+                    try streams.stderr.print("invalid token at {d}\n", .{err_info.pos});
+                    try streams.stderr.flush();
 
                     return err;
                 },
@@ -107,8 +107,8 @@ pub fn readLine(this: *Repl, allocator: std.mem.Allocator) !bool {
             }
 
             _ = this.executor.execute(argc, argv) catch {
-                shell.stderr.print("command not found: {s}\n", .{lexer.tokens.items[0].value.string.data}) catch {};
-                shell.stderr.flush() catch {};
+                try streams.stderr.print("command not found: {s}\n", .{lexer.tokens.items[0].value.string.data});
+                try streams.stderr.flush();
             };
         }
     }
@@ -117,53 +117,42 @@ pub fn readLine(this: *Repl, allocator: std.mem.Allocator) !bool {
 }
 
 test "EOF" {
-    const testing = @import("testing.zig");
-
     const alloc = std.testing.allocator;
-    var streams: testing.Streams = try .init(alloc, .{});
-    defer streams.deinit(alloc);
 
-    var shell: Shell = .init(alloc, &streams.stdin, &streams.stdout, &streams.stderr);
-    defer shell.deinit(alloc);
+    var heap_streams: io.HeapStreams = try .init(alloc, 1024);
+    defer heap_streams.deinit(alloc);
 
     var executor: executors.EmptyExecutor = .{};
-    var repl: Repl = .{ .executor = executor.executor(), .shell = &shell };
+    var repl: Repl = .{ .executor = executor.executor(), .streams = heap_streams.streams() };
 
     try std.testing.expectEqual(false, try repl.readLine(alloc));
 }
 
 test "Prompt" {
-    const testing = @import("testing.zig");
-
     const alloc = std.testing.allocator;
-    var streams: testing.Streams = try .init(alloc, .{});
-    defer streams.deinit(alloc);
 
-    var shell: Shell = .init(alloc, &streams.stdin, &streams.stdout, &streams.stderr);
-    defer shell.deinit(alloc);
+    var heap_streams: io.HeapStreams = try .init(alloc, 1024);
+    defer heap_streams.deinit(alloc);
 
     var executor: executors.EmptyExecutor = .{};
-    var repl: Repl = .{ .executor = executor.executor(), .shell = &shell };
+    var repl: Repl = .{ .executor = executor.executor(), .streams = heap_streams.streams() };
 
     try std.testing.expectEqual(false, try repl.readLine(alloc));
-    try std.testing.expectEqualStrings("$ \n", streams.stderr_buf[0..3]);
+    try std.testing.expectEqualStrings("$ \n", heap_streams.stderr_buffer[0..3]);
 }
 
 test "Echo builtin" {
-    const testing = @import("testing.zig");
-
     const alloc = std.testing.allocator;
-    var streams: testing.Streams = try .init(alloc, .{});
-    defer streams.deinit(alloc);
 
-    try streams.writeLine("echo \'Hello, world!\'");
+    var heap_streams: io.HeapStreams = try .init(alloc, 1024);
+    defer heap_streams.deinit(alloc);
 
-    var shell: Shell = .init(alloc, &streams.stdin, &streams.stdout, &streams.stderr);
-    defer shell.deinit(alloc);
+    var stdin_writer: std.Io.Writer = .fixed(heap_streams.stdin_buffer);
+    try stdin_writer.writeAll("echo \'Hello, world!\'\n");
 
-    var executor: executors.BuiltinsExecutor = .init(alloc, &shell, null);
-    var repl: Repl = .{ .executor = executor.executor(), .shell = &shell };
+    var executor: executors.BuiltinsExecutor = .init(alloc, heap_streams.streams(), null);
+    var repl: Repl = .{ .executor = executor.executor(), .streams = heap_streams.streams() };
 
     try std.testing.expectEqual(false, try repl.readLine(alloc));
-    try std.testing.expectEqualStrings("Hello, world!\n", streams.stdout_buf[0..streams.stdout.end]);
+    try std.testing.expectEqualStrings("Hello, world!\n", heap_streams.stdout_buffer[0..heap_streams.stdout.end]);
 }
