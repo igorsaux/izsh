@@ -22,9 +22,16 @@ pub fn main() !void {
     var stderr_buffer: [1024]u8 = undefined;
 
     var file_streams = izsh.io.FileStreams.init(stdin, &stdin_buffer, stdout, &stdout_buffer, stderr, &stderr_buffer);
+    var term_backend: izsh.term.Native = .{};
+
+    try term_backend.init();
+    defer term_backend.deinit() catch {};
 
     var builtins_executor: izsh.executors.BuiltinsExecutor = .init(alloc.allocator(), file_streams.streams(), null);
-    var repl: izsh.Repl = .{ .executor = builtins_executor.executor(), .streams = file_streams.streams() };
+    var repl: izsh.Repl = .{
+        .executor = builtins_executor.executor(),
+        .backend = term_backend.terminal(),
+    };
 
     while (try repl.readLine(alloc.allocator())) {}
 }

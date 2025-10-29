@@ -9,39 +9,32 @@ const Lexer = @import("lexer.zig");
 const types = @import("types.zig");
 const io = @import("io.zig");
 const executors = @import("executors.zig");
+const term = @import("term.zig");
 
 executor: executors.Executor,
-streams: io.Streams,
+backend: term.Terminal,
 
 const Repl = @This();
 
 pub fn readLine(this: *Repl, allocator: std.mem.Allocator) !bool {
-    var streams = this.streams;
-
     next_line: while (true) {
-        try streams.stderr.writeAll("$ ");
-        try streams.stderr.flush();
+        try this.backend.addnstr("$ ");
 
         var input: std.ArrayList(u8) = try .initCapacity(allocator, 1024);
         defer input.deinit(allocator);
 
-        var byte: [1]u8 = .{0};
+        var chr: u8 = 0;
 
-        while (byte[0] != '\n') {
-            streams.stdin.readSliceAll(&byte) catch |err| switch (err) {
-                std.Io.Reader.Error.EndOfStream => {
-                    streams.stderr.writeAll("\n") catch {};
-                    streams.stderr.flush() catch {};
+        while (chr != '\n') {
+            chr = this.backend.getch() catch {
+                this.backend.addnstr("\n") catch {};
 
-                    return false;
-                },
-                else => {
-                    return err;
-                },
+                return false;
             };
 
-            if (byte[0] != '\n') {
-                try input.append(allocator, byte[0]);
+            // TODO: parse sequences
+            if (chr != '\n') {
+                try input.append(allocator, chr);
             }
         }
 
@@ -54,8 +47,12 @@ pub fn readLine(this: *Repl, allocator: std.mem.Allocator) !bool {
             var err_info: Lexer.ErrorInfo = .{};
             var lexer = Lexer.parse(allocator, input.items, &err_info) catch |err| switch (err) {
                 Lexer.Error.InvalidToken => {
-                    try streams.stderr.print("invalid token at {d}\n", .{err_info.pos});
-                    try streams.stderr.flush();
+                    // TODO: streaming
+                    var buf: [512]u8 = undefined;
+                    var buf_writer: std.Io.Writer = .fixed(&buf);
+
+                    try buf_writer.print("invalid token at {}\n", .{err_info.pos});
+                    try this.backend.addnstr(buf[0..buf_writer.end]);
 
                     return err;
                 },
@@ -97,8 +94,8 @@ pub fn readLine(this: *Repl, allocator: std.mem.Allocator) !bool {
 
             var p: usize = 1;
 
-            for (args[0 .. args.len - 1], 0..) |chr, i| {
-                if (chr != 0) {
+            for (args[0 .. args.len - 1], 0..) |c, i| {
+                if (c != 0) {
                     continue;
                 }
 
@@ -107,8 +104,13 @@ pub fn readLine(this: *Repl, allocator: std.mem.Allocator) !bool {
             }
 
             _ = this.executor.execute(argc, argv) catch {
-                try streams.stderr.print("command not found: {s}\n", .{lexer.tokens.items[0].value.string.data});
-                try streams.stderr.flush();
+                // TODO: streaming
+                var buf: [512]u8 = undefined;
+                var buf_writer: std.Io.Writer = .fixed(&buf);
+
+                try buf_writer.print("command not found: {s}\n", .{lexer.tokens.items[0].value.string.data});
+
+                try this.backend.addnstr(buf[0..buf_writer.end]);
             };
         }
     }
@@ -123,7 +125,12 @@ test "EOF" {
     defer heap_streams.deinit(alloc);
 
     var executor: executors.EmptyExecutor = .{};
-    var repl: Repl = .{ .executor = executor.executor(), .streams = heap_streams.streams() };
+    var backend: term.Buffer = .{ .input = &heap_streams.stdin, .output = &heap_streams.stderr };
+
+    var repl: Repl = .{
+        .executor = executor.executor(),
+        .backend = backend.terminal(),
+    };
 
     try std.testing.expectEqual(false, try repl.readLine(alloc));
 }
@@ -135,7 +142,12 @@ test "Prompt" {
     defer heap_streams.deinit(alloc);
 
     var executor: executors.EmptyExecutor = .{};
-    var repl: Repl = .{ .executor = executor.executor(), .streams = heap_streams.streams() };
+    var backend: term.Buffer = .{ .input = &heap_streams.stdin, .output = &heap_streams.stderr };
+
+    var repl: Repl = .{
+        .executor = executor.executor(),
+        .backend = backend.terminal(),
+    };
 
     try std.testing.expectEqual(false, try repl.readLine(alloc));
     try std.testing.expectEqualStrings("$ \n", heap_streams.stderr_buffer[0..3]);
@@ -151,7 +163,12 @@ test "Echo builtin" {
     try stdin_writer.writeAll("echo \'Hello, world!\'\n");
 
     var executor: executors.BuiltinsExecutor = .init(alloc, heap_streams.streams(), null);
-    var repl: Repl = .{ .executor = executor.executor(), .streams = heap_streams.streams() };
+    var backend: term.Buffer = .{ .input = &heap_streams.stdin, .output = &heap_streams.stderr };
+
+    var repl: Repl = .{
+        .executor = executor.executor(),
+        .backend = backend.terminal(),
+    };
 
     try std.testing.expectEqual(false, try repl.readLine(alloc));
     try std.testing.expectEqualStrings("Hello, world!\n", heap_streams.stdout_buffer[0..heap_streams.stdout.end]);

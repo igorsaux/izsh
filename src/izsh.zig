@@ -7,16 +7,18 @@
 pub const Repl = @import("repl.zig");
 pub const Lexer = @import("lexer.zig");
 
+pub const term = @import("term.zig");
 pub const io = @import("io.zig");
 pub const executors = @import("executors.zig");
 pub const types = @import("types.zig");
 pub const builtins = @import("builtins.zig");
 
 test {
-    _ = io;
     _ = Repl;
     _ = Lexer;
 
+    _ = term;
+    _ = io;
     _ = executors;
     _ = builtins;
 }

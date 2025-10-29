@@ -13,7 +13,10 @@ pub fn build(b: *std.Build) void {
     const izsh_mod = b.addModule("izsh", .{
         .root_source_file = b.path("src/izsh.zig"),
         .target = target,
+        .link_libc = true,
     });
+
+    izsh_mod.linkSystemLibrary("ncurses", .{});
 
     const izsh_tests = b.addTest(.{
         .root_module = izsh_mod,
